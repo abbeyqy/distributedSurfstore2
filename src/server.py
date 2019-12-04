@@ -112,9 +112,10 @@ def requestVote(log, term, candidateId, lastLogIndex, lastLogTerm):
 
     # If votedFor is null or candidateId, and candidate’s log is at
     # least as up-to-date as receiver’s log, grant vote
-    if (votedFor is None or votedFor == candidateId) and ():
-        return True
-
+    if votedFor is None or votedFor == candidateId:
+        if lastLogTerm > log[-1][0] or (lastLogTerm == log[-1][0]
+                                        and lastLogIndex >= len(log) - 1):
+            return True
     return False
 
 
