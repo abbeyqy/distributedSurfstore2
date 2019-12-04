@@ -3,6 +3,10 @@ from xmlrpc.server import SimpleXMLRPCRequestHandler
 from socketserver import ThreadingMixIn
 from hashlib import sha256
 import argparse
+import threading
+import random
+
+import xmlrpc.client
 
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
@@ -166,6 +170,22 @@ def readconfig(config, servernum):
 
     return maxnum, host, port
 
+# leader behaviors
+def run_leader(nodelist):
+    print("Running Leader")
+
+    # send initial empty AppendEntries RPCs (heartbeat)
+    for node in nodelist:
+        node.surfstore.behb();
+
+# follower rules
+def run_follower():
+    print("Running Follower")
+
+# candidate rules
+def run_candidate():
+    print("Running Candidate")
+
 
 if __name__ == "__main__":
     try:
@@ -200,7 +220,7 @@ if __name__ == "__main__":
         print("Attempting to start XML-RPC Server...")
         print(host, port)
         server = threadedXMLRPCServer((host, port),
-                                      requestHandler=RequestHandler)
+                                      requestHandler=RequestHandler, allow_none=True)
         server.register_introspection_functions()
         server.register_function(ping, "surfstore.ping")
         server.register_function(getblock, "surfstore.getblock")
@@ -217,8 +237,18 @@ if __name__ == "__main__":
         server.register_function(appendEntries, "surfstore.appendEntries")
         server.register_function(tester_getversion,
                                  "surfstore.tester_getversion")
+
+
         print("Started successfully.")
         print("Accepting requests. (Halt program to stop.)")
-        server.serve_forever()
+
+        nodelist=[xmlrpc.client.ServerProxy("http://"+i) for i in serverlist]
+        mainThread = threading.Thread(target = server.serve_forever)
+        mainThread.start()
+        nodelist=[xmlrpc.client.ServerProxy("http://"+i) for i in serverlist]
+
+        if servernum == 0:
+            run_leader(nodelist)
+
     except Exception as e:
         print("Server: " + str(e))
