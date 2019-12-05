@@ -7,6 +7,7 @@ import argparse
 import xmlrpc.client
 import threading
 import random
+import time
 
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
@@ -124,8 +125,7 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     # If votedFor is null or candidateId, and candidate’s log is at
     # least as up-to-date as receiver’s log, grant vote
     if votedFor is None or votedFor == candidateId:
-        if lastLogTerm > log[-1][0] or (lastLogTerm == log[-1][0]
-                                        and lastLogIndex >= len(log) - 1):
+        if lastLogTerm > log[-1][0] or (lastLogTerm == log[-1][0] and lastLogIndex >= len(log) - 1):
             return True
     return False
 
@@ -199,12 +199,21 @@ def readconfig(config, servernum):
 
 
 # leader behaviors
-def run_leader(nodelist):
+def run_leader(nodelist, server):
     print("Running Leader")
 
     # send initial empty AppendEntries RPCs (heartbeat)
-    for node in nodelist:
-        node.surfstore.behb()
+    while True:
+        for node in nodelist:
+            print("Sending hb to ", node, "from", server)
+            node.surfstore.heartbeat(server)
+
+            # periodically send
+            time.sleep(1)
+
+# dummy heatbeat
+def heartbeat(server):
+    print("Recevied HeartBeat from", server)
 
 
 # follower rules
@@ -225,8 +234,7 @@ def run_candidate():
     # send requestVote RPCs to all other servers
     voteCount = 1  # initial vote from itself
     for node in nodelist:
-        if node.surfstore.requestVote(currentTerm, servernum,
-                                      len(log) - 1, log[-1][0]):
+        if node.surfstore.requestVote(currentTerm, servernum, len(log) - 1, log[-1][0]):
             voteCount += 1
     if voteCount > maxnum / 2:
         currentState = 'leader'
@@ -266,9 +274,7 @@ if __name__ == "__main__":
 
         print("Attempting to start XML-RPC Server...")
         print(host, port)
-        server = threadedXMLRPCServer((host, port),
-                                      requestHandler=RequestHandler,
-                                      allow_none=True)
+        server = threadedXMLRPCServer((host, port),requestHandler=RequestHandler, allow_none=True)
         server.register_introspection_functions()
         server.register_function(ping, "surfstore.ping")
         server.register_function(getblock, "surfstore.getblock")
@@ -283,22 +289,29 @@ if __name__ == "__main__":
         server.register_function(isCrashed, "surfstore.isCrashed")
         server.register_function(requestVote, "surfstore.requestVote")
         server.register_function(appendEntries, "surfstore.appendEntries")
-        server.register_function(tester_getversion,
-                                 "surfstore.tester_getversion")
+        server.register_function(tester_getversion,"surfstore.tester_getversion")
+
+        # dummy heartbeat rpc
+        server.register_function(heartbeat, "surfstore.heartbeat")
+
         print("Started successfully.")
         print("Accepting requests. (Halt program to stop.)")
 
         # server.serve_forever()
 
-        nodelist = [
-            xmlrpc.client.ServerProxy("http://" + i) for i in serverlist
-        ]
+        nodelist = [xmlrpc.client.ServerProxy("http://" + i) for i in serverlist]
         t1 = threading.Thread(target=server.serve_forever)
         t1.start()
 
-        # the main process
-        timer = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
-        run_follower()
+        nodelist = [xmlrpc.client.ServerProxy("http://" + i) for i in serverlist]
+
+        # # the main process
+        # timer = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
+        # run_follower()
+
+        # test case, when servernum == 0, it is leader, else follower
+        if servernum == 0:
+            run_leader(nodelist, servernum)
 
     except Exception as e:
         print("Server: " + str(e))
