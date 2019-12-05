@@ -118,6 +118,7 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     """Requests vote to be the leader"""
     global currentState
     global currentTerm
+    global timerFreset
 
     print("Request vote from {}.".format(candidateId))
 
@@ -127,6 +128,7 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     if term > currentTerm:
         currentTerm = term
         currentState = 'follower'
+        timerFreset = True
 
     if term < currentTerm:
         return False
@@ -271,10 +273,10 @@ def heartbeat(server):
 
 # follower rules
 def run_follower():
+    global timerFreset
 
     print("Running Follower")
-    # timer = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
-    timerF = threading.Timer(1, run_candidate)
+    timerF = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
     timerF.start()
     while 1:
         if timerFreset:
@@ -301,7 +303,7 @@ def run_candidate():
     print("Running Candidate")
     currentState = 'candidate'
 
-    timerC = threading.Timer(5, run_candidate)
+    timerC = threading.Timer(random.randint(500, 900) / 1000, run_candidate)
     timerC.start()
     while currentState == 'candidate':
         currentTerm += 1
