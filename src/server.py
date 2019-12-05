@@ -3,10 +3,10 @@ from xmlrpc.server import SimpleXMLRPCRequestHandler
 from socketserver import ThreadingMixIn
 from hashlib import sha256
 import argparse
-import threading
-import random
 
 import xmlrpc.client
+import threading
+import random
 
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
@@ -109,8 +109,12 @@ def isCrashed():
 
 
 # Requests vote from this server to become the leader
-def requestVote(log, term, candidateId, lastLogIndex, lastLogTerm):
+def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     """Requests vote to be the leader"""
+    if term > currentTerm:
+        currentTerm = term
+        to_follower = True
+
     if term < currentTerm:
         return False
 
@@ -124,18 +128,34 @@ def requestVote(log, term, candidateId, lastLogIndex, lastLogTerm):
 
 
 # Updates fileinfomap
-def appendEntries(log, term, leaderId, prevLogIndex, prevLogTerm, entries,
+def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
                   leaderCommit):
     """Updates fileinfomap to match that of the leader"""
+    global log
+
+    if term > currentTerm:
+        currentTerm = term
+        to_follower = True
+
+    #1. reply false if term < currentTerm
     if term < currentTerm:
         return False
+    #2. reply false if log doesn't contain an entry at prevLogIndex whose term matches prevLogTerm.
     if log[prevLogIndex][0] != prevLogTerm:
         return False
+    #3. If an existing entry conflicts with a new one(same index different term),
+    # delete the existing entry and all that follow it.
+    #4. Append any new entries not already in the log
+    append_flag = False
     for idx in range(prevLogIndex + 1, len(log)):
         if log[idx][0] != entries[idx - prevLogIndex - 1][0]:
             log = log[:idx]
             log += entries[idx - prevLogIndex - 1:]
+            append_flag = True
             break
+    if not append_flag:
+        log += entries[len(log) - prevLogIndex - 1:]
+    #5. If leaderCommit > commitIndex, set commitIndex=min(leaderCommit, index of last new entry)
     if leaderCommit > commitIndex:
         commitIndex = min(leaderCommit, len(log) - 1)
     return True
@@ -170,21 +190,36 @@ def readconfig(config, servernum):
 
     return maxnum, host, port
 
+
 # leader behaviors
 def run_leader(nodelist):
     print("Running Leader")
 
     # send initial empty AppendEntries RPCs (heartbeat)
     for node in nodelist:
-        node.surfstore.behb();
+        node.surfstore.behb()
+
 
 # follower rules
 def run_follower():
     print("Running Follower")
+    timer.start()
+
 
 # candidate rules
 def run_candidate():
+    global currentTerm
+
     print("Running Candidate")
+    currentTerm += 1
+    timer.cancel()
+    timer.start()
+    # send RequestVote RPCs to all other servers
+
+    while True:
+        if to_follower:
+            timer.cancel()
+            run_follower()
 
 
 if __name__ == "__main__":
@@ -209,6 +244,7 @@ if __name__ == "__main__":
         fileinfomap = dict()
 
         crashFlag = False
+        to_follower = False
         # persistent state on all servers
         currentTerm = 0
         votedFor = None
@@ -220,7 +256,8 @@ if __name__ == "__main__":
         print("Attempting to start XML-RPC Server...")
         print(host, port)
         server = threadedXMLRPCServer((host, port),
-                                      requestHandler=RequestHandler, allow_none=True)
+                                      requestHandler=RequestHandler,
+                                      allow_none=True)
         server.register_introspection_functions()
         server.register_function(ping, "surfstore.ping")
         server.register_function(getblock, "surfstore.getblock")
@@ -237,18 +274,23 @@ if __name__ == "__main__":
         server.register_function(appendEntries, "surfstore.appendEntries")
         server.register_function(tester_getversion,
                                  "surfstore.tester_getversion")
+        print("Started successfully.")
+        print("Accepting requests. (Halt program to stop.)")
 
+        server.serve_forever()
 
         print("Started successfully.")
         print("Accepting requests. (Halt program to stop.)")
 
-        nodelist=[xmlrpc.client.ServerProxy("http://"+i) for i in serverlist]
-        mainThread = threading.Thread(target = server.serve_forever)
-        mainThread.start()
-        nodelist=[xmlrpc.client.ServerProxy("http://"+i) for i in serverlist]
+        nodelist = [
+            xmlrpc.client.ServerProxy("http://" + i) for i in serverlist
+        ]
+        t1 = threading.Thread(target=server.serve_forever)
+        t1.start()
 
-        if servernum == 0:
-            run_leader(nodelist)
+        # the main process
+        timer = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
+        run_follower()
 
     except Exception as e:
         print("Server: " + str(e))
