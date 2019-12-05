@@ -76,7 +76,9 @@ def updatefile(filename, version, hashlist):
 def isLeader():
     """Is this metadata store a leader?"""
     print("IsLeader()")
-    return
+    if currentState == 'leader':
+        return True
+    return False
 
 
 # "Crashes" this metadata store
@@ -115,6 +117,9 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     global currentState
     global currentTerm
 
+    if crashFlag:
+        raise Exception("isCrashed!")
+
     if term > currentTerm:
         currentTerm = term
         currentState = 'follower'
@@ -125,7 +130,8 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     # If votedFor is null or candidateId, and candidate’s log is at
     # least as up-to-date as receiver’s log, grant vote
     if votedFor is None or votedFor == candidateId:
-        if lastLogTerm > log[-1][0] or (lastLogTerm == log[-1][0] and lastLogIndex >= len(log) - 1):
+        if lastLogTerm > log[-1][0] or (lastLogTerm == log[-1][0]
+                                        and lastLogIndex >= len(log) - 1):
             return True
     return False
 
@@ -137,6 +143,10 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
     global log
     global currentState
     global currentTerm
+    global commitIndex
+
+    if crashFlag:
+        raise Exception("isCrashed!")
 
     if term > currentTerm:
         currentTerm = term
@@ -199,17 +209,44 @@ def readconfig(config, servernum):
 
 
 # leader behaviors
-def run_leader(nodelist, server):
+def run_leader():
+    global commitIndex
+
     print("Running Leader")
+    # local variable (reinitialized after election)
+    # nextIndex initialized to leader last log index + 1
+    nextIndex = [len(log) for i in range(len(nodelist))]
+    # matchIndex initialized to 0
+    matchIndex = [0 for i in range(len(nodelist))]
 
     # send initial empty AppendEntries RPCs (heartbeat)
-    while True:
-        for node in nodelist:
-            print("Sending hb to ", node, "from", server)
-            node.surfstore.heartbeat(server)
+    while currentState == 'leader':
+        for idx, node in enumerate(nodelist):
+            lastLogIndex = len(log) - 1
+            if lastLogIndex >= nextIndex[idx]:
+                if node.surfstore.appendEntries(
+                        currentTerm, servernum, lastLogIndex, log[-1][0],
+                        log[nextIndex[idx]:lastLogIndex], commitIndex):
+                    nextIndex[idx] = lastLogIndex + 1
+                    matchIndex[idx] = lastLogIndex
+                else:
+                    nextIndex[idx] -= 1
+
+            else:
+                print("Sending hb to ", node, "from", servernum)
+                node.surfstore.heartbeat(servernum)
 
             # periodically send
             time.sleep(1)
+
+        for n in range(len(log) - 1, commitIndex, -1):
+            if sum([i >= n for i in matchIndex
+                    ]) > maxnum / 2 and log[n][0] == currentTerm:
+                commitIndex = n
+
+    # if command received from client: append entry to local log,
+    # respond after entry applied to state machine.
+
 
 # dummy heatbeat
 def heartbeat(server):
@@ -229,16 +266,19 @@ def run_candidate():
 
     print("Running Candidate")
     currentTerm += 1
-    timer.cancel()
     timer.start()
     # send requestVote RPCs to all other servers
     voteCount = 1  # initial vote from itself
     for node in nodelist:
-        if node.surfstore.requestVote(currentTerm, servernum, len(log) - 1, log[-1][0]):
-            voteCount += 1
+        try:
+            if node.surfstore.requestVote(currentTerm, servernum,
+                                          len(log) - 1, log[-1][0]):
+                voteCount += 1
+        except:
+            pass
     if voteCount > maxnum / 2:
         currentState = 'leader'
-    return
+        timer.cancel()
 
 
 if __name__ == "__main__":
@@ -274,7 +314,9 @@ if __name__ == "__main__":
 
         print("Attempting to start XML-RPC Server...")
         print(host, port)
-        server = threadedXMLRPCServer((host, port),requestHandler=RequestHandler, allow_none=True)
+        server = threadedXMLRPCServer((host, port),
+                                      requestHandler=RequestHandler,
+                                      allow_none=True)
         server.register_introspection_functions()
         server.register_function(ping, "surfstore.ping")
         server.register_function(getblock, "surfstore.getblock")
@@ -289,7 +331,8 @@ if __name__ == "__main__":
         server.register_function(isCrashed, "surfstore.isCrashed")
         server.register_function(requestVote, "surfstore.requestVote")
         server.register_function(appendEntries, "surfstore.appendEntries")
-        server.register_function(tester_getversion,"surfstore.tester_getversion")
+        server.register_function(tester_getversion,
+                                 "surfstore.tester_getversion")
 
         # dummy heartbeat rpc
         server.register_function(heartbeat, "surfstore.heartbeat")
@@ -299,19 +342,29 @@ if __name__ == "__main__":
 
         # server.serve_forever()
 
-        nodelist = [xmlrpc.client.ServerProxy("http://" + i) for i in serverlist]
+        nodelist = [
+            xmlrpc.client.ServerProxy("http://" + i) for i in serverlist
+        ]
         t1 = threading.Thread(target=server.serve_forever)
         t1.start()
 
-        nodelist = [xmlrpc.client.ServerProxy("http://" + i) for i in serverlist]
+        nodelist = [
+            xmlrpc.client.ServerProxy("http://" + i) for i in serverlist
+        ]
 
         # # the main process
-        # timer = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
-        # run_follower()
+        timer = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
+        while True:
+            if currentState == 'follower':
+                run_follower()
+            elif currentState == 'candidate':
+                run_candidate()
+            elif currentState == 'leader':
+                run_leader()
 
         # test case, when servernum == 0, it is leader, else follower
         if servernum == 0:
-            run_leader(nodelist, servernum)
+            run_leader()
 
     except Exception as e:
         print("Server: " + str(e))
