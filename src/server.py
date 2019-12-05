@@ -281,7 +281,6 @@ def run_candidate():
         timer.cancel()
 
 
-# main func
 if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser(description="SurfStore server")
