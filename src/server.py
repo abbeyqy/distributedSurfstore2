@@ -148,6 +148,7 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
     global currentState
     global currentTerm
     global commitIndex
+    global timerFreset
 
     print("AppendEntries from {}.".format(leaderId))
 
@@ -159,6 +160,8 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
 
     if currentState == 'candidate' or currentState == 'leader':
         currentState = 'follower'
+    else:
+        timerFreset = True
 
     #1. reply false if term < currentTerm
     if term < currentTerm:
@@ -240,7 +243,9 @@ def run_leader():
 
             else:
                 print("Sending hb to ", node, "from", servernum)
-                node.surfstore.heartbeat(servernum)
+                node.surfstore.appendEntries(currentTerm, servernum,
+                                             lastLogIndex, log[-1][0], [],
+                                             commitIndex)
 
             # periodically send
             time.sleep(1)
@@ -271,6 +276,11 @@ def run_follower():
     # timer = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
     timerF = threading.Timer(1, run_candidate)
     timerF.start()
+    while 1:
+        if timerFreset:
+            timerF.cancel()
+            timerFreset = False
+            timerF.start()
 
     # # set 3 seconds for testing purpose
     # signal.setitimer(signal.ITIMER_REAL, 3, 0.0)
@@ -337,6 +347,7 @@ if __name__ == "__main__":
 
         crashFlag = False
         currentState = 'follower'
+        timerFreset = False
         # persistent state on all servers
         currentTerm = 0
         votedFor = None
