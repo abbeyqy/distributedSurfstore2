@@ -9,6 +9,8 @@ import threading
 import random
 import time
 
+import signal
+
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2', )
@@ -248,15 +250,26 @@ def run_leader():
     # respond after entry applied to state machine.
 
 
-# dummy heatbeat
+# dummy heartbeat
 def heartbeat(server):
     print("Recevied HeartBeat from", server)
 
 
 # follower rules
 def run_follower():
+    global currentState
+
     print("Running Follower")
-    timer.start()
+
+    # set 3 seconds for testing purpose
+    signal.setitimer(signal.ITIMER_REAL, 3, 0.0)
+    while currentState == "follower":
+        signal.signal(signal.SIGALRM, beComeCandidate)
+
+
+# test timeout
+def beComeCandidate(signum, frame):
+    print("follower timeout!")
 
 
 # candidate rules
@@ -331,8 +344,7 @@ if __name__ == "__main__":
         server.register_function(isCrashed, "surfstore.isCrashed")
         server.register_function(requestVote, "surfstore.requestVote")
         server.register_function(appendEntries, "surfstore.appendEntries")
-        server.register_function(tester_getversion,
-                                 "surfstore.tester_getversion")
+        server.register_function(tester_getversion,"surfstore.tester_getversion")
 
         # dummy heartbeat rpc
         server.register_function(heartbeat, "surfstore.heartbeat")
@@ -353,7 +365,7 @@ if __name__ == "__main__":
         ]
 
         # # the main process
-        timer = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
+        count = 0
         while True:
             if currentState == 'follower':
                 run_follower()
@@ -361,10 +373,6 @@ if __name__ == "__main__":
                 run_candidate()
             elif currentState == 'leader':
                 run_leader()
-
-        # test case, when servernum == 0, it is leader, else follower
-        if servernum == 0:
-            run_leader()
 
     except Exception as e:
         print("Server: " + str(e))
