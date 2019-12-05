@@ -140,6 +140,8 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
 
     if term > currentTerm:
         currentTerm = term
+
+    if currentState == 'candidate' or currentState == 'leader':
         currentState = 'follower'
 
     #1. reply false if term < currentTerm
