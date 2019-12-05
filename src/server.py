@@ -277,10 +277,7 @@ if __name__ == "__main__":
         print("Started successfully.")
         print("Accepting requests. (Halt program to stop.)")
 
-        server.serve_forever()
-
-        print("Started successfully.")
-        print("Accepting requests. (Halt program to stop.)")
+        # server.serve_forever()
 
         nodelist = [
             xmlrpc.client.ServerProxy("http://" + i) for i in serverlist
