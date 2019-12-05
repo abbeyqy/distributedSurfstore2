@@ -119,6 +119,8 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     global currentState
     global currentTerm
 
+    print("Request vote from {}.".format(candidateId))
+
     if crashFlag:
         raise Exception("isCrashed!")
 
@@ -146,6 +148,8 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
     global currentState
     global currentTerm
     global commitIndex
+
+    print("AppendEntries from {}.".format(leaderId))
 
     if crashFlag:
         raise Exception("isCrashed!")
@@ -249,6 +253,11 @@ def run_leader():
     # if command received from client: append entry to local log,
     # respond after entry applied to state machine.
 
+    if currentState == 'follower':
+        run_follower()
+    elif currentState == 'candidate':
+        run_candidate()
+
 
 # dummy heartbeat
 def heartbeat(server):
@@ -257,14 +266,16 @@ def heartbeat(server):
 
 # follower rules
 def run_follower():
-    global currentState
 
     print("Running Follower")
+    # timer = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
+    timerF = threading.Timer(1, run_candidate)
+    timerF.start()
 
-    # set 3 seconds for testing purpose
-    signal.setitimer(signal.ITIMER_REAL, 3, 0.0)
-    while currentState == "follower":
-        signal.signal(signal.SIGALRM, beComeCandidate)
+    # # set 3 seconds for testing purpose
+    # signal.setitimer(signal.ITIMER_REAL, 3, 0.0)
+    # while currentState == "follower":
+    #     signal.signal(signal.SIGALRM, beComeCandidate)
 
 
 # test timeout
@@ -278,20 +289,29 @@ def run_candidate():
     global currentState
 
     print("Running Candidate")
-    currentTerm += 1
-    timer.start()
-    # send requestVote RPCs to all other servers
-    voteCount = 1  # initial vote from itself
-    for node in nodelist:
-        try:
-            if node.surfstore.requestVote(currentTerm, servernum,
-                                          len(log) - 1, log[-1][0]):
-                voteCount += 1
-        except:
-            pass
-    if voteCount > maxnum / 2:
-        currentState = 'leader'
-        timer.cancel()
+    currentState = 'candidate'
+
+    timerC = threading.Timer(5, run_candidate)
+    timerC.start()
+    while currentState == 'candidate':
+        currentTerm += 1
+        # send requestVote RPCs to all other servers
+        voteCount = 1  # initial vote from itself
+        for node in nodelist:
+            try:
+                if node.surfstore.requestVote(currentTerm, servernum,
+                                              len(log) - 1, log[-1][0]):
+                    voteCount += 1
+            except:
+                pass
+        if voteCount > maxnum / 2:
+            currentState = 'leader'
+
+    timerC.cancel()
+    if currentState == 'leader':
+        run_leader()
+    elif currentState == 'follower':
+        run_follower()
 
 
 if __name__ == "__main__":
@@ -320,7 +340,7 @@ if __name__ == "__main__":
         # persistent state on all servers
         currentTerm = 0
         votedFor = None
-        log = []  # (term, command)
+        log = [(0, None)]  # (term, command)
         # Volatile state on all servers
         commitIndex = 0
         lastApplied = 0
@@ -344,7 +364,8 @@ if __name__ == "__main__":
         server.register_function(isCrashed, "surfstore.isCrashed")
         server.register_function(requestVote, "surfstore.requestVote")
         server.register_function(appendEntries, "surfstore.appendEntries")
-        server.register_function(tester_getversion,"surfstore.tester_getversion")
+        server.register_function(tester_getversion,
+                                 "surfstore.tester_getversion")
 
         # dummy heartbeat rpc
         server.register_function(heartbeat, "surfstore.heartbeat")
@@ -365,14 +386,7 @@ if __name__ == "__main__":
         ]
 
         # # the main process
-        count = 0
-        while True:
-            if currentState == 'follower':
-                run_follower()
-            elif currentState == 'candidate':
-                run_candidate()
-            elif currentState == 'leader':
-                run_leader()
+        run_follower()
 
     except Exception as e:
         print("Server: " + str(e))
