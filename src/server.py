@@ -111,9 +111,12 @@ def isCrashed():
 # Requests vote from this server to become the leader
 def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     """Requests vote to be the leader"""
+    global currentState
+    global currentTerm
+
     if term > currentTerm:
         currentTerm = term
-        to_follower = True
+        currentState = 'follower'
 
     if term < currentTerm:
         return False
@@ -132,10 +135,12 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
                   leaderCommit):
     """Updates fileinfomap to match that of the leader"""
     global log
+    global currentState
+    global currentTerm
 
     if term > currentTerm:
         currentTerm = term
-        to_follower = True
+        currentState = 'follower'
 
     #1. reply false if term < currentTerm
     if term < currentTerm:
@@ -209,17 +214,21 @@ def run_follower():
 # candidate rules
 def run_candidate():
     global currentTerm
+    global currentState
 
     print("Running Candidate")
     currentTerm += 1
     timer.cancel()
     timer.start()
-    # send RequestVote RPCs to all other servers
-
-    while True:
-        if to_follower:
-            timer.cancel()
-            run_follower()
+    # send requestVote RPCs to all other servers
+    voteCount = 1  # initial vote from itself
+    for node in nodelist:
+        if node.surfstore.requestVote(currentTerm, servernum,
+                                      len(log) - 1, log[-1][0]):
+            voteCount += 1
+    if voteCount > maxnum / 2:
+        currentState = 'leader'
+    return
 
 
 if __name__ == "__main__":
@@ -244,7 +253,7 @@ if __name__ == "__main__":
         fileinfomap = dict()
 
         crashFlag = False
-        to_follower = False
+        currentState = 'follower'
         # persistent state on all servers
         currentTerm = 0
         votedFor = None
