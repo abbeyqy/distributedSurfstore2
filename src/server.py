@@ -96,6 +96,9 @@ def updatefile(filename, version, hashlist):
         # if file does not exist, create file
         if filename not in fileinfomap:
             fileinfomap[filename] = [0, hashlist]
+            # update log
+            log.append((currentTerm, "update"))
+            return True
             
         currentVersion = fileinfomap[filename][0]
 
