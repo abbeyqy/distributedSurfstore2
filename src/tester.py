@@ -11,8 +11,6 @@ if __name__ == "__main__":
 
     try:
         client = xmlrpc.client.ServerProxy('http://' + hostport)
-        client = xmlrpc.client.ServerProxy('http://' + hostport)
-        client = xmlrpc.client.ServerProxy('http://' + hostport)
         # Test ping
         client.surfstore.ping()
         print("Ping() successful")
@@ -20,8 +18,8 @@ if __name__ == "__main__":
         print("isCrashed: ", client.surfstore.isCrashed())
         #client.surfstore.crash()
         #client.surfstore.restore()
-        print("updatefile: ",client.surfstore.updatefile("tst.txt", 1, [1, 2, 3]))
-        print("getversion: ", client.surfstore.tester_getversion("tst.txt"))
+        print("updatefile: ",client.surfstore.updatefile("test.txt", 1, [1, 2, 3]))
+        print("getversion: ", client.surfstore.tester_getversion("test.txt"))
 
     except Exception as e:
         print("Client: " + str(e))

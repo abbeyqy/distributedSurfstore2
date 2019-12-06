@@ -252,7 +252,7 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
 
 
 def tester_getversion(filename):
-    return fileinfomap[filename][0]
+    return None if filename not in fileinfomap else fileinfomap[filename][0]
 
 
 # Reads the config file and return host, port and store list of other servers
