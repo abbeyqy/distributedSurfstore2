@@ -71,7 +71,6 @@ def getfileinfomap():
                         break
     else:
         raise Exception("This is not the Leader Server. Get file failed")
-        return None
 
     return fileinfomap
 
@@ -79,43 +78,33 @@ def getfileinfomap():
 # Update a file's fileinfo entry
 def updatefile(filename, version, hashlist):
     """Updates a file's fileinfo entry"""
+
+    global log
+
     print("UpdateFile(" + filename + ")")
 
     if currentState == 'leader':
-        commit = False
-        while not commit:
-            ack = 1
-            for node in nodelist:
-                if not node.surfstore.isCrashed():
-                    ack += 1
-                    print("ACKed: ", ack)
-                    if ack > maxnum / 2:
-                        commit = True
-                        break
 
-        # if file does not exist, create file
+        response = True
         if filename not in fileinfomap:
-            fileinfomap[filename] = [0, hashlist]
-            # update log
-            log.append((currentTerm, "update"))
-            return True
-            
-        currentVersion = fileinfomap[filename][0]
-
-        # update file if the version number is exactly 1 greater than the stored file's version number
-        if version == (currentVersion + 1):
-            fileinfomap[filename] = [version, hashlist]
+            log.append((currentTerm, (filename, [0, hashlist])))
         else:
-            return False
+            currentVersion = fileinfomap[filename][0]
+            if version == currentVersion + 1:
+                log.append((currentTerm, (filename, [version, hashlist])))
+            else:
+                response = False
 
-        # update log
-        log.append((currentTerm, "update"))
+        shouldApply = len(log) - 1
+
+        while lastApplied < shouldApply:
+            pass
+
+        # respond after entry applied to state machine
+        return response
 
     else:
         raise Exception("This is not the Leader Server. Update file failed")
-        return False
-
-    return True
 
 
 # PROJECT 3 APIs below
@@ -262,7 +251,6 @@ def readconfig(config, servernum):
     l = fd.readline()
 
     maxnum = int(l.strip().split(' ')[1])
-    print("maxnum is {}".format(maxnum))
 
     if servernum >= maxnum or servernum < 0:
         raise Exception('Server number out of range.')
@@ -286,6 +274,8 @@ def readconfig(config, servernum):
 def run_leader():
     global commitIndex
     global currentState
+    global lastApplied
+    global fileinfomap
 
     print("Running Leader")
     # local variable (reinitialized after election)
@@ -303,6 +293,8 @@ def run_leader():
                     if node.surfstore.appendEntries(
                             currentTerm, servernum, lastLogIndex, log[-1][0],
                             log[nextIndex[idx]:lastLogIndex], commitIndex):
+                        print("log append successfully: ",
+                              loglog[nextIndex[idx]:lastLogIndex])
                         nextIndex[idx] = lastLogIndex + 1
                         matchIndex[idx] = lastLogIndex
                     else:
@@ -321,8 +313,14 @@ def run_leader():
 
         for n in range(len(log) - 1, commitIndex, -1):
             if sum([i >= n for i in matchIndex
-                    ]) > maxnum / 2 and log[n][0] == currentTerm:
+                    ]) + 1 > maxnum / 2 and log[n][0] == currentTerm:
                 commitIndex = n
+
+        while commitIndex > lastApplied:
+            lastApplied += 1
+            filename, fileinfo = log[lastApplied][1]
+            print("add {} to fileinfomap".format(filename))
+            fileinfomap[filename] = fileinfo
 
         # periodically send
         time.sleep(0.1)
@@ -341,9 +339,15 @@ def run_follower():
     global timerFreset
     global currentState
     global timer
+    global lastApplied
 
     if crashFlag:
         return
+
+    while commitIndex > lastApplied:
+        lastApplied += 1
+        filename, fileinfo = log[lastApplied][1]
+        fileinfomap[filename] = fileinfo
 
     print("Running Follower, currentTerm is ", currentTerm)
     if timer.isAlive():
@@ -352,7 +356,6 @@ def run_follower():
     timer.start()
     while timer.isAlive():
         if timerFreset:
-            print("Receive RPC calls from server, reset follower timer.")
             timer.cancel()
             timerFreset = False
             run_follower()
