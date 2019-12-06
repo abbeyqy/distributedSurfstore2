@@ -253,13 +253,13 @@ def run_leader():
                 except:
                     pass
 
-            # periodically send
-            time.sleep(1)
-
         for n in range(len(log) - 1, commitIndex, -1):
             if sum([i >= n for i in matchIndex
                     ]) > maxnum / 2.0 and log[n][0] == currentTerm:
                 commitIndex = n
+
+        # periodically send
+        time.sleep(1)
 
     # if command received from client: append entry to local log,
     # respond after entry applied to state machine.
