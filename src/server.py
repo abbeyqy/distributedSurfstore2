@@ -108,20 +108,25 @@ def isLeader():
 # with an error (unless indicated otherwise), and shouldn't send
 # RPCs to other servers
 def crash():
+    global crashFlag
+    global currentState
     """Crashes this metadata store"""
     print("Crash()")
     if not crashFlag:
         crashFlag = True
+        currentState = 'follower'
     return
 
 
 # "Restores" this metadata store, allowing it to start responding
 # to and sending RPCs to other nodes
 def restore():
+    global crashFlag
     """Restores this metadata store"""
     print("Restore()")
     if crashFlag:
         crashFlag = False
+    run_follower()
     return
 
 
@@ -141,8 +146,8 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     global timerFreset
     global votedFor
 
-    print("RequestVote from {}, term {}, currentTerm {}.".format(
-        candidateId, term, currentTerm))
+    print("RequestVote from {}, term {}, currentTerm {}, votedFor {}.".format(
+        candidateId, term, currentTerm, votedFor))
 
     if crashFlag:
         raise Exception("isCrashed!")
@@ -163,6 +168,7 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     if votedFor is None or votedFor == candidateId:
         if lastLogTerm > log[-1][0] or (lastLogTerm == log[-1][0]
                                         and lastLogIndex >= len(log) - 1):
+            votedFor = candidateId
             return True
     return False
 
@@ -263,13 +269,16 @@ def run_leader():
         for idx, node in enumerate(nodelist):
             lastLogIndex = len(log) - 1
             if lastLogIndex >= nextIndex[idx]:
-                if node.surfstore.appendEntries(
-                        currentTerm, servernum, lastLogIndex, log[-1][0],
-                        log[nextIndex[idx]:lastLogIndex], commitIndex):
-                    nextIndex[idx] = lastLogIndex + 1
-                    matchIndex[idx] = lastLogIndex
-                else:
-                    nextIndex[idx] -= 1
+                try:
+                    if node.surfstore.appendEntries(
+                            currentTerm, servernum, lastLogIndex, log[-1][0],
+                            log[nextIndex[idx]:lastLogIndex], commitIndex):
+                        nextIndex[idx] = lastLogIndex + 1
+                        matchIndex[idx] = lastLogIndex
+                    else:
+                        nextIndex[idx] -= 1
+                except:
+                    pass
 
             else:
                 try:
@@ -290,11 +299,6 @@ def run_leader():
 
     # if command received from client: append entry to local log,
     # respond after entry applied to state machine.
-
-    if currentState == 'follower':
-        run_follower()
-    elif currentState == 'candidate':
-        run_candidate()
 
 
 # dummy heartbeat
@@ -335,7 +339,7 @@ def run_candidate():
 
     if timer.isAlive():
         timer.cancel()
-    timer = threading.Timer(random.randint(500, 900) / 1000, run_candidate)
+    timer = threading.Timer(random.randint(700, 1000) / 1000, run_candidate)
     timer.start()
     # send requestVote RPCs to all other servers
     voteCount = 1  # initial vote from itself
@@ -351,7 +355,6 @@ def run_candidate():
         currentState = 'leader'
 
     while timer.isAlive():
-
         if currentState == 'leader':
             timer.cancel()
             run_leader()
