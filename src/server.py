@@ -89,10 +89,12 @@ def isLeader():
 # RPCs to other servers
 def crash():
     global crashFlag
+    global currentState
     """Crashes this metadata store"""
     print("Crash()")
     if not crashFlag:
         crashFlag = True
+        currentState = 'follower'
     return
 
 
@@ -333,7 +335,6 @@ def run_candidate():
         currentState = 'leader'
 
     while timer.isAlive():
-
         if currentState == 'leader':
             timer.cancel()
             run_leader()
