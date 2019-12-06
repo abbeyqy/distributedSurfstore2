@@ -69,10 +69,10 @@ def getfileinfomap():
                     if ack > maxnum / 2:
                         commit = True
                         break
+        return fileinfomap
+
     else:
         raise Exception("This is not the Leader Server. Get file failed")
-
-    return fileinfomap
 
 
 # Update a file's fileinfo entry
@@ -131,12 +131,15 @@ def isLeader():
 # RPCs to other servers
 def crash():
     global crashFlag
+    global timer
     global currentState
     """Crashes this metadata store"""
     print("Crash()")
     if not crashFlag:
         crashFlag = True
         currentState = 'follower'
+        if timer.isAlive():
+            timer.cancel()
     return
 
 
@@ -240,6 +243,7 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
     #5. If leaderCommit > commitIndex, set commitIndex=min(leaderCommit, index of last new entry)
     if leaderCommit > commitIndex:
         commitIndex = min(leaderCommit, len(log) - 1)
+        print(commitIndex)
     return True
 
 
@@ -279,8 +283,11 @@ def run_leader():
     global currentState
     global lastApplied
     global fileinfomap
+    global timer
 
     print("Running Leader")
+    if timer.isAlive():
+        timer.cancel()
     # local variable (reinitialized after election)
     # nextIndex initialized to leader last log index + 1
     nextIndex = [len(log) for i in range(len(nodelist))]
@@ -329,9 +336,6 @@ def run_leader():
         # periodically send
         time.sleep(0.1)
 
-    # if command received from client: append entry to local log,
-    # respond after entry applied to state machine.
-
 
 # dummy heartbeat
 def heartbeat(server):
@@ -352,6 +356,7 @@ def run_follower():
         lastApplied += 1
         filename, fileinfo = log[lastApplied][1]
         fileinfomap[filename] = fileinfo
+        print("fileinfomap updated: ", filename, fileinfo[0])
 
     print("Running Follower, currentTerm is ", currentTerm)
     if timer.isAlive():
