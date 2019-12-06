@@ -81,16 +81,7 @@ def updatefile(filename, version, hashlist):
     """Updates a file's fileinfo entry"""
     print("UpdateFile(" + filename + ")")
 
-    if filename not in fileinfomap:
-        fileinfomap[filename] = [0, hashlist]
-    currentVersion = fileinfomap[filename][0]
-
     if currentState == 'leader':
-        # update file if the version number is exactly 1 greater than the stored file's version number
-        if version == (currentVersion + 1):
-            fileinfomap[filename] = [version, hashlist]
-        else:
-            return False
         commit = False
         while not commit:
             ack = 1
@@ -100,8 +91,23 @@ def updatefile(filename, version, hashlist):
                     print("ACKed: ", ack)
                     if ack > maxnum / 2:
                         commit = True
-                        log.append((currentTerm, "update"))
                         break
+
+        # if file does not exist, create file
+        if filename not in fileinfomap:
+            fileinfomap[filename] = [0, hashlist]
+            
+        currentVersion = fileinfomap[filename][0]
+
+        # update file if the version number is exactly 1 greater than the stored file's version number
+        if version == (currentVersion + 1):
+            fileinfomap[filename] = [version, hashlist]
+        else:
+            return False
+
+        # update log
+        log.append((currentTerm, "update"))
+
     else:
         raise Exception("This is not the Leader Server. Update file failed")
         return False
