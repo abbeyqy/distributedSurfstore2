@@ -58,7 +58,7 @@ def getfileinfomap():
     print("GetFileInfoMap()")
 
     # return only if it is the leader server
-    if current == "leader":
+    if currentState == "leader":
         commit = False
         while not commit:
             ack = 1
@@ -83,7 +83,7 @@ def updatefile(filename, version, hashlist):
 
     currentVersion = fileinfomap[filename][0]
 
-    if current == "leader":
+    if currentState == "leader":
         # update file if the version number is exactly 1 greater than the stored file's version number
         if version == (currentVersion + 1):
             fileinfomap[filename] = [version, hashlist]
