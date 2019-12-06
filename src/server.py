@@ -83,6 +83,9 @@ def updatefile(filename, version, hashlist):
 
     print("UpdateFile(" + filename + ")")
 
+    if crashFlag:
+        raise Exception("Leader server crashed")
+
     if currentState == 'leader':
 
         response = True
@@ -353,7 +356,7 @@ def run_follower():
     print("Running Follower, currentTerm is ", currentTerm)
     if timer.isAlive():
         timer.cancel()
-    timer = threading.Timer(random.randint(600, 800) / 1000, run_candidate)
+    timer = threading.Timer(random.randint(700, 1000) / 1000, run_candidate)
     timer.start()
     while timer.isAlive():
         if timerFreset:
@@ -475,7 +478,8 @@ if __name__ == "__main__":
         t1 = threading.Thread(target=server.serve_forever)
         t1.start()
 
-        timer = threading.Timer(random.randint(500, 900) / 1000, run_candidate)
+        timer = threading.Timer(
+            random.randint(700, 1000) / 1000, run_candidate)
 
         # # the main process
         run_follower()
