@@ -58,7 +58,7 @@ def getfileinfomap():
     print("GetFileInfoMap()")
 
     # return only if it is the leader server
-    if currentState == "leader":
+    if currentState == 'leader':
         commit = False
         while not commit:
             ack = 1
@@ -81,9 +81,11 @@ def updatefile(filename, version, hashlist):
     """Updates a file's fileinfo entry"""
     print("UpdateFile(" + filename + ")")
 
+    if filename not in fileinfomap:
+        fileinfomap[filename] = [0, hashlist]
     currentVersion = fileinfomap[filename][0]
 
-    if currentState == "leader":
+    if currentState == 'leader':
         # update file if the version number is exactly 1 greater than the stored file's version number
         if version == (currentVersion + 1):
             fileinfomap[filename] = [version, hashlist]
@@ -301,7 +303,7 @@ def run_leader():
 
             else:
                 try:
-                    print("Sending hb to ", node, "from", servernum)
+                    #print("Sending hb to ", node, "from", servernum)
                     node.surfstore.appendEntries(currentTerm, servernum,
                                                  lastLogIndex, log[-1][0], [],
                                                  commitIndex)

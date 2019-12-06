@@ -14,12 +14,14 @@ if __name__ == "__main__":
         # Test ping
         client.surfstore.ping()
         print("Ping() successful")
-        client.surfstore.isLeader()
-        client.surfstore.isCrashed()
-        client.surfstore.crash()
-        client.surfstore.restore()
-        client.surfstore.updatefile("Test.txt", 3, [1, 2, 3])
-        client.surfstore.tester_getversion("Test.txt")
+        print("after isLeader: ", client.surfstore.isLeader())
+        print("isCrashed: ", client.surfstore.isCrashed())
+        #client.surfstore.crash()
+        #client.surfstore.restore()
+        print("updatefile: ",client.surfstore.updatefile("Test.txt", 1, [1, 2, 3]))
+        print("updatefile: ",client.surfstore.updatefile("Test.txt", 2, [2, 2, 4]))
+        print("updatefile: ",client.surfstore.updatefile("Test.txt", 3, [2, 5, 8]))
+        print("getversion: ", client.surfstore.tester_getversion("Test.txt"))
 
     except Exception as e:
         print("Client: " + str(e))
