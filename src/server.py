@@ -200,6 +200,7 @@ def readconfig(config, servernum):
     l = fd.readline()
 
     maxnum = int(l.strip().split(' ')[1])
+    print("maxnum is {}".format(maxnum))
 
     if servernum >= maxnum or servernum < 0:
         raise Exception('Server number out of range.')
@@ -244,17 +245,20 @@ def run_leader():
                     nextIndex[idx] -= 1
 
             else:
-                print("Sending hb to ", node, "from", servernum)
-                node.surfstore.appendEntries(currentTerm, servernum,
-                                             lastLogIndex, log[-1][0], [],
-                                             commitIndex)
+                try:
+                    print("Sending hb to ", node, "from", servernum)
+                    node.surfstore.appendEntries(currentTerm, servernum,
+                                                 lastLogIndex, log[-1][0], [],
+                                                 commitIndex)
+                except:
+                    pass
 
             # periodically send
             time.sleep(1)
 
         for n in range(len(log) - 1, commitIndex, -1):
             if sum([i >= n for i in matchIndex
-                    ]) > maxnum / 2 and log[n][0] == currentTerm:
+                    ]) > maxnum / 2.0 and log[n][0] == currentTerm:
                 commitIndex = n
 
     # if command received from client: append entry to local log,
@@ -276,7 +280,7 @@ def run_follower():
     global timerFreset
 
     print("Running Follower")
-    timerF = threading.Timer(random.randint(200, 800) / 1000, run_candidate)
+    timerF = threading.Timer(random.randint(600, 800) / 1000.0, run_candidate)
     timerF.start()
     while 1:
         if timerFreset:
@@ -303,7 +307,7 @@ def run_candidate():
     print("Running Candidate")
     currentState = 'candidate'
 
-    timerC = threading.Timer(random.randint(500, 900) / 1000, run_candidate)
+    timerC = threading.Timer(random.randint(500, 900) / 1000.0, run_candidate)
     timerC.start()
     while currentState == 'candidate':
         currentTerm += 1
@@ -313,10 +317,11 @@ def run_candidate():
             try:
                 if node.surfstore.requestVote(currentTerm, servernum,
                                               len(log) - 1, log[-1][0]):
+                    print("Receive vote from ", node)
                     voteCount += 1
             except:
                 pass
-        if voteCount > maxnum / 2:
+        if voteCount > maxnum / 2.0:
             currentState = 'leader'
 
     timerC.cancel()
