@@ -96,6 +96,7 @@ def updatefile(filename, version, hashlist):
                 response = False
 
         shouldApply = len(log) - 1
+        print("Updated Log: ", log)
 
         while lastApplied < shouldApply:
             pass
@@ -291,15 +292,15 @@ def run_leader():
             if lastLogIndex >= nextIndex[idx]:
                 try:
                     if node.surfstore.appendEntries(
-                            currentTerm, servernum, lastLogIndex, log[-1][0],
-                            log[nextIndex[idx]:lastLogIndex], commitIndex):
-                        print("log append successfully: ",
-                              loglog[nextIndex[idx]:lastLogIndex])
+                            currentTerm, servernum, nextIndex[idx] - 1,
+                            log[nextIndex[idx] - 1][0],
+                            log[nextIndex[idx]:lastLogIndex + 1], commitIndex):
                         nextIndex[idx] = lastLogIndex + 1
                         matchIndex[idx] = lastLogIndex
                     else:
                         nextIndex[idx] -= 1
-                except:
+                except Exception as e:
+                    # print("Error occurred: ", e)
                     pass
 
             else:
