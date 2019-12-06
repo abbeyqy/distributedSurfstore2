@@ -247,13 +247,16 @@ def run_leader():
         for idx, node in enumerate(nodelist):
             lastLogIndex = len(log) - 1
             if lastLogIndex >= nextIndex[idx]:
-                if node.surfstore.appendEntries(
-                        currentTerm, servernum, lastLogIndex, log[-1][0],
-                        log[nextIndex[idx]:lastLogIndex], commitIndex):
-                    nextIndex[idx] = lastLogIndex + 1
-                    matchIndex[idx] = lastLogIndex
-                else:
-                    nextIndex[idx] -= 1
+                try:
+                    if node.surfstore.appendEntries(
+                            currentTerm, servernum, lastLogIndex, log[-1][0],
+                            log[nextIndex[idx]:lastLogIndex], commitIndex):
+                        nextIndex[idx] = lastLogIndex + 1
+                        matchIndex[idx] = lastLogIndex
+                    else:
+                        nextIndex[idx] -= 1
+                except:
+                    pass
 
             else:
                 try:
