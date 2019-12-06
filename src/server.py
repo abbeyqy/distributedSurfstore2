@@ -382,9 +382,6 @@ def run_candidate():
     global votedFor
     global timer
 
-    if crashFlag:
-        return
-
     currentTerm += 1
     votedFor = servernum
     print("Running Candidate, currentTerm: ", currentTerm)
@@ -404,10 +401,10 @@ def run_candidate():
                 voteCount += 1
         except:
             pass
-    if voteCount > maxnum / 2:
+    if voteCount > maxnum / 2 and crashFlag == False:
         currentState = 'leader'
 
-    while timer.isAlive():
+    while timer.isAlive() or crashFlag:
         if currentState == 'leader':
             timer.cancel()
             run_leader()
