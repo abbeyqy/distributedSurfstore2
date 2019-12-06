@@ -121,7 +121,8 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     global timerFreset
     global votedFor
 
-    print("Request vote from {}.".format(candidateId))
+    print("RequestVote from {}, term {}, currentTerm {}.".format(
+        candidateId, term, currentTerm))
 
     if crashFlag:
         raise Exception("isCrashed!")
@@ -285,13 +286,17 @@ def heartbeat(server):
 def run_follower():
     global timerFreset
     global currentState
+    global timer
 
-    print("Running Follower")
-    timerF = threading.Timer(random.randint(600, 800) / 1000, run_candidate)
-    timerF.start()
-    while timerF.isAlive():
+    print("Running Follower, currentTerm is ", currentTerm)
+    if timer.isAlive():
+        timer.cancel()
+    timer = threading.Timer(random.randint(600, 800) / 1000, run_candidate)
+    timer.start()
+    while timer.isAlive():
         if timerFreset:
-            timerF.cancel()
+            print("Receive RPC calls from server, reset follower timer.")
+            timer.cancel()
             timerFreset = False
             run_follower()
 
@@ -301,14 +306,17 @@ def run_candidate():
     global currentTerm
     global currentState
     global votedFor
+    global timer
 
     currentTerm += 1
     votedFor = servernum
     print("Running Candidate, currentTerm: ", currentTerm)
     currentState = 'candidate'
 
-    timerC = threading.Timer(random.randint(500, 900) / 1000, run_candidate)
-    timerC.start()
+    if timer.isAlive():
+        timer.cancel()
+    timer = threading.Timer(random.randint(500, 900) / 1000, run_candidate)
+    timer.start()
     # send requestVote RPCs to all other servers
     voteCount = 1  # initial vote from itself
     for node in nodelist:
@@ -322,13 +330,16 @@ def run_candidate():
     if voteCount > maxnum / 2:
         currentState = 'leader'
 
-    while timerC.isAlive():
+    while timer.isAlive():
+
         if currentState == 'leader':
-            timerC.cancel()
+            timer.cancel()
             run_leader()
+            break
         elif currentState == 'follower':
-            timerC.cancel()
+            timer.cancel()
             run_follower()
+            break
     return
 
 
@@ -401,9 +412,7 @@ if __name__ == "__main__":
         t1 = threading.Thread(target=server.serve_forever)
         t1.start()
 
-        nodelist = [
-            xmlrpc.client.ServerProxy("http://" + i) for i in serverlist
-        ]
+        timer = threading.Timer(random.randint(500, 900) / 1000, run_candidate)
 
         # # the main process
         run_follower()
