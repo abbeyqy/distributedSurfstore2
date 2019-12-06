@@ -172,8 +172,8 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     global timerFreset
     global votedFor
 
-    print("RequestVote from {}, term {}, currentTerm {}, votedFor {}.".format(
-        candidateId, term, currentTerm, votedFor))
+    # print("RequestVote from {}, term {}, currentTerm {}, votedFor {}.".format(
+    #     candidateId, term, currentTerm, votedFor))
 
     if crashFlag:
         raise Exception("isCrashed!")
@@ -210,8 +210,6 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
     global timerFreset
     global votedFor
 
-    print("AppendEntries from {}.".format(leaderId))
-
     if crashFlag:
         raise Exception("isCrashed!")
 
@@ -242,10 +240,12 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
             break
     if not append_flag:
         log += entries[len(log) - prevLogIndex - 1:]
+    # print("Appended log: ", log, "commitIndex: ", commitIndex,
+    #       "leaderCommit: ", leaderCommit, "lastApplied: ", lastApplied)
+
     #5. If leaderCommit > commitIndex, set commitIndex=min(leaderCommit, index of last new entry)
     if leaderCommit > commitIndex:
         commitIndex = min(leaderCommit, len(log) - 1)
-        print(commitIndex)
     return True
 
 
@@ -355,7 +355,7 @@ def run_follower():
     global lastApplied
 
     while crashFlag:
-        pass
+        time.sleep(0.01)
 
     while commitIndex > lastApplied:
         lastApplied += 1
@@ -374,6 +374,9 @@ def run_follower():
             timerFreset = False
             run_follower()
 
+    if crashFlag:
+        run_follower()
+
 
 # candidate rules
 def run_candidate():
@@ -382,7 +385,8 @@ def run_candidate():
     global votedFor
     global timer
 
-    currentTerm += 1
+    if not crashFlag:
+        currentTerm += 1
     votedFor = servernum
     print("Running Candidate, currentTerm: ", currentTerm)
     currentState = 'candidate'

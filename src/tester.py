@@ -29,6 +29,9 @@ if __name__ == "__main__":
         print("Crash server 3.")
         client2.surfstore.crash()
         print("isCrashed: ", client2.surfstore.isCrashed())
+        print("updatefile: ",
+              client.surfstore.updatefile("test.txt", 2, [1, 2, 3]))
+        print("getversion: ", client.surfstore.tester_getversion("test.txt"))
         print("Restore server 3.")
         client2.surfstore.restore()
         time.sleep(1)
