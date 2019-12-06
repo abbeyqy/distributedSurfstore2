@@ -255,7 +255,7 @@ def run_leader():
 
         for n in range(len(log) - 1, commitIndex, -1):
             if sum([i >= n for i in matchIndex
-                    ]) > maxnum / 2.0 and log[n][0] == currentTerm:
+                    ]) > maxnum / 2 and log[n][0] == currentTerm:
                 commitIndex = n
 
         # periodically send
@@ -280,12 +280,14 @@ def run_follower():
     global timerFreset
 
     print("Running Follower")
-    timerF = threading.Timer(random.randint(600, 800) / 1000.0, run_candidate)
+    timerF = threading.Timer(random.randint(600, 800) / 1000, run_candidate)
     timerF.start()
     while 1:
         if timerFreset:
             timerF.cancel()
             timerFreset = False
+            timerF = threading.Timer(
+                random.randint(600, 800) / 1000, run_candidate)
             timerF.start()
 
     # # set 3 seconds for testing purpose
@@ -321,7 +323,7 @@ def run_candidate():
                     voteCount += 1
             except:
                 pass
-        if voteCount > maxnum / 2.0:
+        if voteCount > maxnum / 2:
             currentState = 'leader'
 
     timerC.cancel()
