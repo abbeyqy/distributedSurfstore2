@@ -338,6 +338,9 @@ def run_leader():
         # periodically send
         time.sleep(0.1)
 
+    if currentState == 'follower':
+        run_follower()
+
 
 # dummy heartbeat
 def heartbeat(server):
