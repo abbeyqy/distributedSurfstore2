@@ -125,8 +125,8 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     global timerFreset
     global votedFor
 
-    print("RequestVote from {}, term {}, currentTerm {}.".format(
-        candidateId, term, currentTerm))
+    print("RequestVote from {}, term {}, currentTerm {}, votedFor {}.".format(
+        candidateId, term, currentTerm, votedFor))
 
     if crashFlag:
         raise Exception("isCrashed!")
@@ -147,6 +147,7 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     if votedFor is None or votedFor == candidateId:
         if lastLogTerm > log[-1][0] or (lastLogTerm == log[-1][0]
                                         and lastLogIndex >= len(log) - 1):
+            votedFor = candidateId
             return True
     return False
 
@@ -322,7 +323,7 @@ def run_candidate():
 
     if timer.isAlive():
         timer.cancel()
-    timer = threading.Timer(random.randint(500, 900) / 1000, run_candidate)
+    timer = threading.Timer(random.randint(700, 1000) / 1000, run_candidate)
     timer.start()
     # send requestVote RPCs to all other servers
     voteCount = 1  # initial vote from itself
