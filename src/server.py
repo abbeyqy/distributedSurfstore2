@@ -106,6 +106,7 @@ def restore():
     print("Restore()")
     if crashFlag:
         crashFlag = False
+    run_follower()
     return
 
 
@@ -278,11 +279,6 @@ def run_leader():
 
     # if command received from client: append entry to local log,
     # respond after entry applied to state machine.
-
-    if currentState == 'follower':
-        run_follower()
-    elif currentState == 'candidate':
-        run_candidate()
 
 
 # dummy heartbeat
