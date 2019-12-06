@@ -148,7 +148,6 @@ def restore():
     print("Restore()")
     if crashFlag:
         crashFlag = False
-    run_follower()
     return
 
 
