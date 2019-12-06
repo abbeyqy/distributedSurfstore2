@@ -88,6 +88,7 @@ def isLeader():
 # with an error (unless indicated otherwise), and shouldn't send
 # RPCs to other servers
 def crash():
+    global crashFlag
     """Crashes this metadata store"""
     print("Crash()")
     if not crashFlag:
@@ -98,6 +99,7 @@ def crash():
 # "Restores" this metadata store, allowing it to start responding
 # to and sending RPCs to other nodes
 def restore():
+    global crashFlag
     """Restores this metadata store"""
     print("Restore()")
     if crashFlag:
