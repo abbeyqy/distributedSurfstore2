@@ -151,7 +151,6 @@ def restore():
     print("Restore()")
     if crashFlag:
         crashFlag = False
-    run_follower()
     return
 
 
@@ -350,8 +349,8 @@ def run_follower():
     global timer
     global lastApplied
 
-    if crashFlag:
-        return
+    while crashFlag:
+        pass
 
     while commitIndex > lastApplied:
         lastApplied += 1

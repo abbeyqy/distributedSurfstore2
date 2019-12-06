@@ -1,5 +1,6 @@
 import argparse
 import xmlrpc.client
+import time
 
 if __name__ == "__main__":
 
@@ -22,6 +23,15 @@ if __name__ == "__main__":
         print("updatefile: ",
               client.surfstore.updatefile("test.txt", 1, [1, 2, 3]))
         print("getversion: ", client.surfstore.tester_getversion("test.txt"))
+        time.sleep(1)
+        print("server 3 version number: ",
+              client2.surfstore.tester_getversion("test.txt"))
+        print("Crash server 3.")
+        client2.surfstore.crash()
+        print("isCrashed: ", client2.surfstore.isCrashed())
+        print("Restore server 3.")
+        client2.surfstore.restore()
+        time.sleep(1)
         print("server 3 version number: ",
               client2.surfstore.tester_getversion("test.txt"))
 
