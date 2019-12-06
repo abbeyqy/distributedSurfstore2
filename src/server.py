@@ -96,6 +96,8 @@ def updatefile(filename, version, hashlist):
             if version == currentVersion + 1:
                 log.append((currentTerm, (filename, [version, hashlist])))
             else:
+                log.append((currentTerm, (filename, [currentVersion,
+                                                     hashlist])))
                 response = False
 
         shouldApply = len(log) - 1
