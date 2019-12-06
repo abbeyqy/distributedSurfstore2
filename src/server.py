@@ -352,7 +352,7 @@ def run_follower():
     print("Running Follower, currentTerm is ", currentTerm)
     if timer.isAlive():
         timer.cancel()
-    timer = threading.Timer(random.randint(150, 300) / 1000, run_candidate)
+    timer = threading.Timer(random.randint(700，1000) / 1000, run_candidate)
     timer.start()
     while timer.isAlive():
         if timerFreset:
@@ -379,7 +379,7 @@ def run_candidate():
 
     if timer.isAlive():
         timer.cancel()
-    timer = threading.Timer(random.randint(150, 300) / 1000, run_candidate)
+    timer = threading.Timer(random.randint(700，1000) / 1000, run_candidate)
     timer.start()
     # send requestVote RPCs to all other servers
     voteCount = 1  # initial vote from itself
@@ -475,7 +475,7 @@ if __name__ == "__main__":
         t1 = threading.Thread(target=server.serve_forever)
         t1.start()
 
-        timer = threading.Timer(random.randint(150, 300) / 1000, run_candidate)
+        timer = threading.Timer(random.randint(700，1000) / 1000, run_candidate)
 
         # # the main process
         run_follower()
