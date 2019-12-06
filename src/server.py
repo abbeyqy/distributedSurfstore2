@@ -81,6 +81,10 @@ def updatefile(filename, version, hashlist):
     """Updates a file's fileinfo entry"""
     print("UpdateFile(" + filename + ")")
 
+    if isCrashed():
+        raise Exception("Leader server crashed")
+        return False
+
     if currentState == 'leader':
         commit = False
         while not commit:
@@ -95,7 +99,7 @@ def updatefile(filename, version, hashlist):
 
         # if file does not exist, create file
         if filename not in fileinfomap:
-            fileinfomap[filename] = [0, hashlist]
+            fileinfomap[filename] = [version, hashlist]
             # update log
             log.append((currentTerm, "update"))
             return True
