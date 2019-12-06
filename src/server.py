@@ -119,6 +119,7 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
     global currentState
     global currentTerm
     global timerFreset
+    global votedFor
 
     print("Request vote from {}.".format(candidateId))
 
@@ -127,8 +128,11 @@ def requestVote(term, candidateId, lastLogIndex, lastLogTerm):
 
     if term > currentTerm:
         currentTerm = term
-        currentState = 'follower'
-        timerFreset = True
+        votedFor = None
+        if currentState == 'follower':
+            timerFreset = True
+        else:
+            currentState = 'follower'
 
     if term < currentTerm:
         return False
@@ -151,6 +155,7 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
     global currentTerm
     global commitIndex
     global timerFreset
+    global votedFor
 
     print("AppendEntries from {}.".format(leaderId))
 
@@ -159,6 +164,7 @@ def appendEntries(term, leaderId, prevLogIndex, prevLogTerm, entries,
 
     if term > currentTerm:
         currentTerm = term
+        votedFor = None
 
     if currentState == 'candidate' or currentState == 'leader':
         currentState = 'follower'
@@ -259,7 +265,7 @@ def run_leader():
                 commitIndex = n
 
         # periodically send
-        time.sleep(1)
+        time.sleep(0.1)
 
     # if command received from client: append entry to local log,
     # respond after entry applied to state machine.
@@ -278,59 +284,52 @@ def heartbeat(server):
 # follower rules
 def run_follower():
     global timerFreset
+    global currentState
 
     print("Running Follower")
     timerF = threading.Timer(random.randint(600, 800) / 1000, run_candidate)
     timerF.start()
-    while 1:
+    while timerF.isAlive():
         if timerFreset:
             timerF.cancel()
             timerFreset = False
-            timerF = threading.Timer(
-                random.randint(600, 800) / 1000, run_candidate)
-            timerF.start()
-
-    # # set 3 seconds for testing purpose
-    # signal.setitimer(signal.ITIMER_REAL, 3, 0.0)
-    # while currentState == "follower":
-    #     signal.signal(signal.SIGALRM, beComeCandidate)
-
-
-# test timeout
-def beComeCandidate(signum, frame):
-    print("follower timeout!")
+            run_follower()
 
 
 # candidate rules
 def run_candidate():
     global currentTerm
     global currentState
+    global votedFor
 
-    print("Running Candidate")
+    currentTerm += 1
+    votedFor = servernum
+    print("Running Candidate, currentTerm: ", currentTerm)
     currentState = 'candidate'
 
-    timerC = threading.Timer(random.randint(500, 900) / 1000.0, run_candidate)
+    timerC = threading.Timer(random.randint(500, 900) / 1000, run_candidate)
     timerC.start()
-    while currentState == 'candidate':
-        currentTerm += 1
-        # send requestVote RPCs to all other servers
-        voteCount = 1  # initial vote from itself
-        for node in nodelist:
-            try:
-                if node.surfstore.requestVote(currentTerm, servernum,
-                                              len(log) - 1, log[-1][0]):
-                    print("Receive vote from ", node)
-                    voteCount += 1
-            except:
-                pass
-        if voteCount > maxnum / 2:
-            currentState = 'leader'
+    # send requestVote RPCs to all other servers
+    voteCount = 1  # initial vote from itself
+    for node in nodelist:
+        try:
+            if node.surfstore.requestVote(currentTerm, servernum,
+                                          len(log) - 1, log[-1][0]):
+                print("Receive vote from ", node)
+                voteCount += 1
+        except:
+            pass
+    if voteCount > maxnum / 2:
+        currentState = 'leader'
 
-    timerC.cancel()
-    if currentState == 'leader':
-        run_leader()
-    elif currentState == 'follower':
-        run_follower()
+    while timerC.isAlive():
+        if currentState == 'leader':
+            timerC.cancel()
+            run_leader()
+        elif currentState == 'follower':
+            timerC.cancel()
+            run_follower()
+    return
 
 
 if __name__ == "__main__":
@@ -349,6 +348,7 @@ if __name__ == "__main__":
 
         # maxnum is maximum number of servers
         maxnum, host, port = readconfig(config, servernum)
+        print("Maxnum number of servers is: ", maxnum)
 
         hashmap = dict()
 
