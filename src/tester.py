@@ -11,6 +11,7 @@ if __name__ == "__main__":
 
     try:
         client = xmlrpc.client.ServerProxy('http://' + hostport)
+        client2 = xmlrpc.client.ServerProxy('http://' + 'localhost:8083')
         # Test ping
         client.surfstore.ping()
         print("Ping() successful")
@@ -21,6 +22,8 @@ if __name__ == "__main__":
         print("updatefile: ",
               client.surfstore.updatefile("test.txt", 1, [1, 2, 3]))
         print("getversion: ", client.surfstore.tester_getversion("test.txt"))
+        print("server 3 version number: ",
+              client2.surfstore.tester_getversion("test.txt"))
 
     except Exception as e:
         print("Client: " + str(e))

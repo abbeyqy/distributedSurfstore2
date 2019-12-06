@@ -90,7 +90,7 @@ def updatefile(filename, version, hashlist):
 
         response = True
         if filename not in fileinfomap:
-            log.append((currentTerm, (filename, [0, hashlist])))
+            log.append((currentTerm, (filename, [1, hashlist])))
         else:
             currentVersion = fileinfomap[filename][0]
             if version == currentVersion + 1:
@@ -310,8 +310,9 @@ def run_leader():
                 try:
                     #print("Sending hb to ", node, "from", servernum)
                     node.surfstore.appendEntries(currentTerm, servernum,
-                                                 lastLogIndex, log[-1][0], [],
-                                                 commitIndex)
+                                                 nextIndex[idx] - 1,
+                                                 log[nextIndex[idx] - 1][0],
+                                                 [], commitIndex)
                 except:
                     pass
 
