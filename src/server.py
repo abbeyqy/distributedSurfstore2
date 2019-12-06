@@ -67,7 +67,7 @@ def updatefile(filename, version, hashlist):
 
     currentVersion = fileinfomap[filename][0]
 
-    if current == "leader":
+    if currentState == "leader":
         # update file if the version number is exactly 1 greater than the stored file's version number
         if version == (currentVersion + 1):
             fileinfomap[filename] = [version, hashlist]
@@ -77,9 +77,9 @@ def updatefile(filename, version, hashlist):
         while not commit:
             ack = 1
             for node in nodelist:
-                if not node.surfstore.isCrashed()
-                ack += 1
-                print("ACKed: ", ack)
+                if not node.surfstore.isCrashed():
+                    ack += 1
+                    print("ACKed: ", ack)
                 if ack > maxnum / 2:
                     commit = True
                     break
@@ -96,6 +96,7 @@ def updatefile(filename, version, hashlist):
 # Queries whether this metadata store is a leader
 # Note that this call should work even when the server is "crashed"
 def isLeader():
+    global currentState
     """Is this metadata store a leader?"""
     print("IsLeader()")
     if currentState == 'leader':
@@ -256,6 +257,7 @@ def readconfig(config, servernum):
 # leader behaviors
 def run_leader():
     global commitIndex
+    global currentState
 
     print("Running Leader")
     # local variable (reinitialized after election)
@@ -312,6 +314,9 @@ def run_follower():
     global currentState
     global timer
 
+    if crashFlag:
+        return
+
     print("Running Follower, currentTerm is ", currentTerm)
     if timer.isAlive():
         timer.cancel()
@@ -331,6 +336,9 @@ def run_candidate():
     global currentState
     global votedFor
     global timer
+
+    if crashFlag:
+        return
 
     currentTerm += 1
     votedFor = servernum
