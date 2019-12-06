@@ -57,6 +57,22 @@ def getfileinfomap():
     """Gets the fileinfo map"""
     print("GetFileInfoMap()")
 
+    # return only if it is the leader server
+    if current == "leader":
+        commit = False
+        while not commit:
+            ack = 1
+            for node in nodelist:
+                if not node.surfstore.isCrashed():
+                    ack += 1
+                    print("# of nodes not crashed ", ack)
+                    if ack > maxnum / 2:
+                        commit = True
+                        break
+    else:
+        raise Exception("This is not the Leader Server. Get file failed")
+        return None
+
     return fileinfomap
 
 
@@ -77,14 +93,15 @@ def updatefile(filename, version, hashlist):
         while not commit:
             ack = 1
             for node in nodelist:
-                if not node.surfstore.isCrashed()
-                ack += 1
-                print("ACKed: ", ack)
-                if ack > maxnum / 2:
-                    commit = True
-                    break
+                if not node.surfstore.isCrashed():
+                    ack += 1
+                    print("ACKed: ", ack)
+                    if ack > maxnum / 2:
+                        commit = True
+                        log.append((currentTerm, "update"))
+                        break
     else:
-        raise Exception("This is not the Leader Server")
+        raise Exception("This is not the Leader Server. Update file failed")
         return False
 
     return True
